@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title of the document</title>
+
+</head>
+
+<body>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin="" />
+
+    <style>
+        #mapid {
+            height: 600px;
+        }
+
+        .leaflet-container {
+            background-color: rgba(255, 0, 0, 0.0);
+        }
+
+        /* The Modal (background) */
+        .modal {
+            display: none;
+            /* Hidden by default */
+            position: fixed;
+            /* Stay in place */
+            z-index: 10000;
+            /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%;
+            /* Full width */
+            height: 100%;
+            /* Full height */
+            overflow: auto;
+            /* Enable scroll if needed */
+            background-color: rgb(0, 0, 0);
+            /* Fallback color */
+            background-color: rgba(0, 0, 0, 0.4);
+            /* Black w/ opacity */
+        }
+
+        /* Modal Content/Box */
+        .modal-content {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+            background-color: #fefefe;
+            margin: 15% auto;
+            /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            /* Could be more or less, depending on screen size */
+        }
+
+        /* The Close Button */
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modalTable {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .modalTable td,
+        .modalTable th {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        .modalTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .modalTable tr:hover {
+            background-color: #ddd;
+        }
+
+        .modalTable th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            color: white;
+        }
+    </style>
+    <div id="myModal" class="modal">
+
+        <!-- Modal content -->
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modal-title">State Task Summary</h3>
+            <p id="model-note"></p>
+            <table id="modal-table" class="modalTable">
+
+            </table>
+
+        </div>
+
+    </div>
+    <div id="mapid"></div>
+
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/fetch-ie8@1.5.0/fetch.min.js"
+        integrity="sha384-r3d18ujNYJC8fiX5Q5/V+pWBXTj9mFTbS7wbUI4NJuzSJ9vQK5tweZjMln89ryEP"
+        crossorigin="anonymous"></script>
+    <script>
+
+
+
+
+
+        // Get the modal
+        var modal = document.getElementById("myModal");
+        var span = document.getElementsByClassName("close")[0];
+        var modalTitle = document.getElementById("modal-title");
+        var modalTable = document.getElementById("modal-table");
+        var modalNote = document.getElementById("model-note");
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function () {
+            modal.style.display = "none";
+        }
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        var newSummaryTable = function (data, color) {
+            // Example data structure below
+            // {"headers": [
+            //                 "Unit",
+            //                 "Title",
+            //                 "Summary",
+            //                 "Status"
+            //             ],
+            // "data": [{
+            //                     "Unit": "JTG629.1",
+            //                     "Title": "Test",
+            //                     "Summary": "This is a summary",
+            //                     "Status": "IN-PROGRESS"
+            //                 }, ... ]}
+
+            var cols = Object.keys(data.headers);
+            var headerRow = '';
+            var bodyRows = '';
+
+            cols.map(function (col) {
+                headerRow += '<th style="background-color:' + color + '">' + data.headers[col] + '</th>';
+            });
+
+            data.data.map(function (row) {
+                bodyRows += '<tr>';
+                cols.map(function (colName) {
+                    bodyRows += '<td>' + row[colName] + '</td>';
+                });
+                bodyRows += '</tr>';
+            });
+
+            modalTable.innerHTML = '<thead><tr>' +
+                headerRow +
+                '</tr></thead><tbody>' +
+                bodyRows +
+                '</tbody>';
+
+        };
+
+        var data = {}
+        var mymap = L.map('mapid', {
+            attributionControl: false
+        }).setView([-26.2, 135.9], 4);
+        var info = L.control();
+
+        info.update = function (props) {
+            this._div.innerHTML = (props ? '<b>' + props['stateName'] + '</b>' : 'Hover over a state');
+        };
+
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+            this.update();
+            return this._div;
+        };
+
+        info.addTo(mymap);
+
+        // Get the json data file
+        fetch("/australia-map-data.json")
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                var geojson = L.geoJSON(data, {
+                    style: function (feature) {
+                        return {
+                            color: feature.properties.color
+                            , weight: 1,
+                            fillOpacity: 1
+                        }
+                            ;
+                    },
+                    onEachFeature: function (feature, layer) {
+                        // layer.bindPopup(feature.properties['stateName']);
+
+
+
+                        layer.on('mouseover', function (e) {
+                            layer.setStyle({
+                                weight: 2,
+                                fillOpacity: 0.5
+                            });
+                            info.update(layer.feature.properties);
+                        }).on('mouseout', function (e) {
+                            geojson.resetStyle(layer);
+                            info.update();
+                        });
+
+                        layer.on('click', function (e) {
+
+                            var props = e.sourceTarget.feature.properties;
+
+                            if (props.taskSummaryData) {
+                                modalTitle.innerText = props.stateName + " Task Summary"
+                                modalNote.innerText = props.taskSummaryData.note
+                                newSummaryTable(props.taskSummaryData, props.color);
+                                modal.style.display = "block";
+                            };
+                        });
+                    }
+                }).addTo(mymap);
+            })
+            .catch(function (error) {
+                console.log("Error: there was an error loading the remote json data file");
+                console.log(error)
+            });
+
+    </script>
+
+</body>
+
+
+</html>
